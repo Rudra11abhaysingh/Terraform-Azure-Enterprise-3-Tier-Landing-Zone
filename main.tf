@@ -53,3 +53,14 @@ module "virtual_machine" {
 
   vm_names = var.vm_names
 }
+module "load_balancer" {
+
+  depends_on = [
+    module.public_ip
+  ]
+
+  source = "./modules/load_balancer"
+
+  load_balancers = var.load_balancers
+
+}
