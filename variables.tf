@@ -82,7 +82,7 @@ variable "load_balancers" {
     resource_group_name = string
     sku                 = string
     public_ip_name      = string
-
+    backend_nic_name    = string
   }))
 
 }
