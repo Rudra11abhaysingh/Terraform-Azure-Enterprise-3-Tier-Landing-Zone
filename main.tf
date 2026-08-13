@@ -89,3 +89,9 @@ module "key_vault" {
 
   key_vaults = var.key_vaults
 }
+module "storage_account" {
+  source = "./modules/storage_account"
+
+  storage_accounts = var.storage_accounts
+  
+}

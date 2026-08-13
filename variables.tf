@@ -116,3 +116,14 @@ variable "key_vaults" {
     purge_protection_enabled   = bool
   }))
 }
+variable "storage_accounts" {
+  type = map(object({
+    name                       = string
+    resource_group_name        = string
+    location                   = string
+    account_tier                = string
+    account_replication_type   = string
+    min_tls_version             = string
+    https_traffic_only_enabled = bool
+  }))
+}
