@@ -93,5 +93,11 @@ module "storage_account" {
   source = "./modules/storage_account"
 
   storage_accounts = var.storage_accounts
-  
+
+}
+module "managed_disk" {
+  source = "./modules/managed_disk"
+
+  managed_disks = var.managed_disks
+  vm_ids        = module.virtual_machine.vm_ids
 }

@@ -121,9 +121,21 @@ variable "storage_accounts" {
     name                       = string
     resource_group_name        = string
     location                   = string
-    account_tier                = string
+    account_tier               = string
     account_replication_type   = string
-    min_tls_version             = string
+    min_tls_version            = string
     https_traffic_only_enabled = bool
+  }))
+}
+variable "managed_disks" {
+  type = map(object({
+    name                 = string
+    location             = string
+    resource_group_name  = string
+    storage_account_type = string
+    create_option        = string
+    disk_size_gb         = number
+    vm_name              = string
+    lun                  = number
   }))
 }
