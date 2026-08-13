@@ -84,3 +84,8 @@ module "route_table" {
   route_tables = var.route_tables
 
 }
+module "key_vault" {
+  source = "./modules/key_vault"
+
+  key_vaults = var.key_vaults
+}
