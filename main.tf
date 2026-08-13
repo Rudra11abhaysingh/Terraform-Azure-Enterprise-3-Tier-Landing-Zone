@@ -64,3 +64,23 @@ module "load_balancer" {
   load_balancers = var.load_balancers
 
 }
+module "nat_gateway" {
+  depends_on = [
+    module.public_ip
+  ]
+
+  source = "./modules/nat_gateway"
+
+  nat_gateways = var.nat_gateways
+
+}
+module "route_table" {
+  depends_on = [
+    module.subnet
+  ]
+
+  source = "./modules/route_table"
+
+  route_tables = var.route_tables
+
+}
