@@ -32,3 +32,6 @@ Desktop.ini
 
 # macOS
 .DS_Store
+tfplan
+*.tfplan
+.terraform/
