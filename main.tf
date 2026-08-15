@@ -64,3 +64,54 @@ module "load_balancer" {
   load_balancers = var.load_balancers
 
 }
+module "nat_gateway" {
+  depends_on = [
+    module.public_ip
+  ]
+
+  source = "./modules/nat_gateway"
+
+  nat_gateways = var.nat_gateways
+
+}
+module "route_table" {
+  depends_on = [
+    module.subnet
+  ]
+
+  source = "./modules/route_table"
+
+  route_tables = var.route_tables
+
+}
+module "key_vault" {
+  source = "./modules/key_vault"
+
+  key_vaults = var.key_vaults
+}
+module "storage_account" {
+  source = "./modules/storage_account"
+
+  storage_accounts = var.storage_accounts
+
+}
+module "managed_disk" {
+  source = "./modules/managed_disk"
+
+  managed_disks = var.managed_disks
+  vm_ids        = module.virtual_machine.vm_ids
+}
+module "azure_bastion" {
+  depends_on = [
+    module.subnet,
+    module.public_ip
+  ]
+
+  source = "./modules/azure_bastion"
+
+  name                  = var.azure_bastion.name
+  location              = var.azure_bastion.location
+  resource_group_name   = var.azure_bastion.resource_group_name
+  virtual_network_name  = var.azure_bastion.virtual_network_name
+  public_ip_name        = var.azure_bastion.public_ip_name
+}
