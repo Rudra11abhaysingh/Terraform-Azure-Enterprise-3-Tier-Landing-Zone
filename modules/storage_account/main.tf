@@ -7,6 +7,6 @@ resource "azurerm_storage_account" "storage" {
   account_tier             = each.value.account_tier
   account_replication_type = each.value.account_replication_type
 
-  min_tls_version           = each.value.min_tls_version
+  min_tls_version            = each.value.min_tls_version
   https_traffic_only_enabled = each.value.https_traffic_only_enabled
 }

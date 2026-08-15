@@ -8,11 +8,11 @@ resource "azurerm_route_table" "route" {
 resource "azurerm_route" "default" {
   for_each = var.route_tables
 
-  name                   = "default-route"
-  resource_group_name    = each.value.resource_group_name
-  route_table_name       = azurerm_route_table.route[each.key].name
-  address_prefix         = "0.0.0.0/0"
-  next_hop_type           = "Internet"
+  name                = "default-route"
+  resource_group_name = each.value.resource_group_name
+  route_table_name    = azurerm_route_table.route[each.key].name
+  address_prefix      = "0.0.0.0/0"
+  next_hop_type       = "Internet"
 }
 data "azurerm_subnet" "subnet" {
   for_each = var.route_tables

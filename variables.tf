@@ -141,10 +141,10 @@ variable "managed_disks" {
 }
 variable "azure_bastion" {
   type = object({
-    name                  = string
-    location              = string
-    resource_group_name   = string
-    virtual_network_name  = string
-    public_ip_name        = string
+    name                 = string
+    location             = string
+    resource_group_name  = string
+    virtual_network_name = string
+    public_ip_name       = string
   })
 }
