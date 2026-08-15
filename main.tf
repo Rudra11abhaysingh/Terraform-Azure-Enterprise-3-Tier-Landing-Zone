@@ -101,3 +101,17 @@ module "managed_disk" {
   managed_disks = var.managed_disks
   vm_ids        = module.virtual_machine.vm_ids
 }
+module "azure_bastion" {
+  depends_on = [
+    module.subnet,
+    module.public_ip
+  ]
+
+  source = "./modules/azure_bastion"
+
+  name                  = var.azure_bastion.name
+  location              = var.azure_bastion.location
+  resource_group_name   = var.azure_bastion.resource_group_name
+  virtual_network_name  = var.azure_bastion.virtual_network_name
+  public_ip_name        = var.azure_bastion.public_ip_name
+}

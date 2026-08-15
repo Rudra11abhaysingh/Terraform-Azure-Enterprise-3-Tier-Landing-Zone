@@ -139,3 +139,12 @@ variable "managed_disks" {
     lun                  = number
   }))
 }
+variable "azure_bastion" {
+  type = object({
+    name                  = string
+    location              = string
+    resource_group_name   = string
+    virtual_network_name  = string
+    public_ip_name        = string
+  })
+}
