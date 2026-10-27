@@ -1,0 +1,280 @@
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  name: Default
+
+variables:
+  TF_IN_AUTOMATION: 'true'
+  TF_INPUT: 'false'
+  TF_WORKING_DIR: '$(Build.SourcesDirectory)'
+  PYTHON_EXE: 'C:\Program Files\Python313\python.exe'
+  CHECKOV_PACKAGE_PATH: 'C:\Tools\PythonPackages'
+  TFLINT_EXE: 'C:\Tools\tflint\tflint.exe'
+  TFSEC_EXE: 'C:\Tools\tfsec\tfsec.exe'
+  AZURE_SERVICE_CONNECTION: 'sc-terraform-azure-lz'
+
+stages:
+
+# =========================================================
+# STAGE 1: TOOL VERIFICATION
+# =========================================================
+- stage: ToolVerification
+  displayName: 'Verify Tools on Self-Hosted Agent'
+  jobs:
+  - job: VerifyTools
+    displayName: 'Verify Python, Checkov and Terraform Tools'
+    steps:
+
+    - checkout: self
+      clean: true
+
+    - task: PowerShell@2
+      displayName: 'Verify Agent Identity and Python'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "=== Agent Identity ==="
+          whoami
+
+          $python = "$(PYTHON_EXE)"
+          $packages = "$(CHECKOV_PACKAGE_PATH)"
+
+          if (-not (Test-Path $python)) {
+              throw "Python executable not found: $python"
+          }
+
+          Write-Host "`n=== Python Version ==="
+          & $python --version
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Python execution failed"
+          }
+
+          if (-not (Test-Path "$packages\checkov\main.py")) {
+              throw "Checkov package not found: $packages\checkov\main.py"
+          }
+
+          $env:PYTHONPATH = $packages
+
+          Write-Host "`n=== Checkov Version ==="
+          & $python -c "import sys; from checkov.main import Checkov; sys.argv=['checkov','--version']; raise SystemExit(Checkov().run())"
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Checkov execution failed"
+          }
+
+          Write-Host "`nPython and Checkov verification completed."
+
+    - task: PowerShell@2
+      displayName: 'Verify Terraform, TFLint and Azure CLI'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+
+          Write-Host "=== Terraform ==="
+          terraform version
+          if ($LASTEXITCODE -ne 0) {
+              throw "Terraform is not available on PATH"
+          }
+
+          Write-Host "`n=== TFLint ==="
+          $tflint = "$(TFLINT_EXE)"
+          if (Test-Path $tflint) {
+              & $tflint --version
+              if ($LASTEXITCODE -ne 0) {
+                  throw "TFLint failed"
+              }
+          }
+          else {
+              Write-Host "TFLint executable not found at $tflint"
+              throw "Install TFLint or update TFLINT_EXE."
+          }
+
+          Write-Host "`n=== Azure CLI ==="
+          az --version
+          if ($LASTEXITCODE -ne 0) {
+              throw "Azure CLI is not available on PATH"
+          }
+
+# =========================================================
+# STAGE 2: TERRAFORM QUALITY AND SECURITY CHECKS
+# =========================================================
+- stage: TerraformChecks
+  displayName: 'Terraform Quality and Security Checks'
+  dependsOn: ToolVerification
+  jobs:
+  - job: StaticAnalysis
+    displayName: 'Format, Validate and Security Scan'
+    steps:
+
+    - checkout: self
+      clean: true
+
+    - task: PowerShell@2
+      displayName: 'Terraform Format Check'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          terraform fmt -check -recursive
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Terraform formatting check failed. Run terraform fmt -recursive."
+          }
+
+    - task: PowerShell@2
+      displayName: 'Terraform Init'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          terraform init -backend=false -input=false
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Terraform init failed"
+          }
+
+    - task: PowerShell@2
+      displayName: 'Terraform Validate'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          terraform validate
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Terraform validation failed"
+          }
+
+    - task: PowerShell@2
+      displayName: 'TFLint Scan'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          & "$(TFLINT_EXE)" --init
+          if ($LASTEXITCODE -ne 0) {
+              throw "TFLint initialization failed"
+          }
+
+          & "$(TFLINT_EXE)" --recursive
+          if ($LASTEXITCODE -ne 0) {
+              throw "TFLint scan failed"
+          }
+
+    - task: PowerShell@2
+      displayName: 'Checkov Terraform Security Scan'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          $env:PYTHONPATH = "$(CHECKOV_PACKAGE_PATH)"
+          $python = "$(PYTHON_EXE)"
+
+          & $python -c "import sys; from checkov.main import Checkov; sys.argv=['checkov','-d','.','--framework','terraform']; raise SystemExit(Checkov().run())"
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Checkov detected policy failures or could not complete the scan. Review the output."
+          }
+
+    - task: PowerShell@2
+      displayName: 'tfsec Terraform Security Scan'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          $tfsec = "$(TFSEC_EXE)"
+
+          if (-not (Test-Path $tfsec)) {
+              throw "tfsec executable not found at $tfsec. Install tfsec or update TFSEC_EXE."
+          }
+
+          & $tfsec .
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "tfsec reported failures or could not complete the scan."
+          }
+
+# =========================================================
+# STAGE 3: TERRAFORM PLAN
+# =========================================================
+- stage: TerraformPlan
+  displayName: 'Terraform Plan'
+  dependsOn: TerraformChecks
+  condition: succeeded()
+  jobs:
+  - job: Plan
+    displayName: 'Generate Terraform Plan'
+    steps:
+
+    - checkout: self
+      clean: true
+
+    - task: PowerShell@2
+      displayName: 'Terraform Init for Plan'
+      inputs:
+        targetType: inline
+        script: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          terraform init -input=false
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Terraform init failed. Check backend configuration and permissions."
+          }
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Plan using Azure Service Connection'
+      inputs:
+        azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$(TF_WORKING_DIR)"
+
+          Write-Host "=== Azure Identity ==="
+          az account show --output table
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Azure service connection authentication failed."
+          }
+
+          terraform plan -input=false -out="$(Build.ArtifactStagingDirectory)\tfplan"
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Terraform plan failed."
+          }
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Terraform Plan Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'terraform-plan'
+        publishLocation: 'Container'
+```
