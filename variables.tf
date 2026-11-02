@@ -1,5 +1,10 @@
 variable "rg_names" {
+  description = "Map of Resource Groups"
 
+  type = map(object({
+    name     = string
+    location = string
+  }))
 }
 variable "vnet_names" {
   description = "Map of Virtual Networks"
@@ -64,13 +69,13 @@ variable "nic_names" {
 }
 variable "vm_names" {
   type = map(object({
-    name                = string
-    location            = string
-    resource_group_name = string
-    vm_size             = string
-    nic_name            = string
-    admin_username      = string
-    admin_password      = string
+    name                 = string
+    location             = string
+    resource_group_name  = string
+    vm_size              = string
+    nic_name             = string
+    admin_username       = string
+    admin_ssh_public_key = string
   }))
 }
 variable "load_balancers" {
@@ -107,12 +112,28 @@ variable "route_tables" {
 }
 variable "key_vaults" {
   type = map(object({
-    name                       = string
-    location                   = string
-    resource_group_name        = string
-    tenant_id                  = string
-    sku_name                   = string
-    soft_delete_retention_days = number
-    purge_protection_enabled   = bool
+    name                          = string
+    location                      = string
+    resource_group_name           = string
+    tenant_id                     = string
+    sku_name                      = string
+    soft_delete_retention_days    = number
+    purge_protection_enabled      = bool
+    public_network_access_enabled = bool
+    ip_rules                      = list(string)
   }))
+}
+
+
+
+variable "azure_bastion" {
+  description = "Azure Bastion host configuration"
+
+  type = object({
+    name                 = string
+    location             = string
+    resource_group_name  = string
+    virtual_network_name = string
+    public_ip_name       = string
+  })
 }
